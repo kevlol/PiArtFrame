@@ -26,7 +26,6 @@ int main(void)
     // Exception handling:ctrl + c
     signal(SIGINT, Handler);
     
-    printf("Test displaying image. \r\n");
     if(DEV_Module_Init()!=0){
         return -1;
     }
@@ -45,7 +44,6 @@ int main(void)
         printf("Failed to apply for image memory...\r\n");
         return -1;
     }
-    printf("Paint_NewImage\r\n");
     Paint_NewImage(img, EPD_7IN5_V2_WIDTH, EPD_7IN5_V2_HEIGHT, 0, WHITE);
     Paint_SelectImage(img);
 
@@ -74,13 +72,15 @@ int main(void)
                 afterRender = steady_clock::now();
             }
         }
-        cout << "Drawing image." << endl;
+        cout << "Drawing image..." << endl;
 
         EPD_7IN5_V2_Init();
         EPD_7IN5_V2_Clear();
         DEV_Delay_ms(500);
         EPD_7IN5_V2_Display(img);
         EPD_7IN5_V2_Sleep();
+        cout << "Draw completed!" << endl;
+
         mandelbrot.ZoomOnInterestingArea();
 
     }
