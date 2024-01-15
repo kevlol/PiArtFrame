@@ -127,12 +127,10 @@ void MandelbrotSet::ZoomOnInterestingArea()
 
     auto uniformness = GetUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, 0, 0, 2, 2);
     choice = {this->x - this->w/4, this->y + this->h/4, uniformness};
-
     choices.emplace_back(choice);
 
     uniformness = GetUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, this->renderedResX / 2, 0, 2, 2);
     choice = {this->x + this->w/4, this->y + this->h/4, uniformness};
-
     choices.emplace_back(choice);
 
     uniformness = GetUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, 0, this->renderedResY / 2, 2, 2);
