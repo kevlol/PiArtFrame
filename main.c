@@ -11,7 +11,7 @@
 using namespace std;
 using namespace chrono;
 
-static constexpr unsigned long SecondsBetweenImages = 20*60; 
+static constexpr unsigned long SecondsBetweenImages = 25*60; 
 void  Handler(int signo)
 {
     //System Exit
@@ -33,6 +33,7 @@ int main(void)
 
     printf("e-Paper Init...\r\n");
     EPD_7IN5_V2_Init();
+    EPD_7IN5_V2_Clear();
     DEV_Delay_ms(500);
 
     // Compute image size 
@@ -73,9 +74,13 @@ int main(void)
                 afterRender = steady_clock::now();
             }
         }
+        cout << "Drawing image." << endl;
 
+        EPD_7IN5_V2_Init();
         EPD_7IN5_V2_Clear();
+        DEV_Delay_ms(500);
         EPD_7IN5_V2_Display(img);
+        EPD_7IN5_V2_Sleep();
         mandelbrot.ZoomOnInterestingArea();
 
     }
