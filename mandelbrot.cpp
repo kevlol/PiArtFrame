@@ -120,56 +120,88 @@ bool MandelbrotSet::IsAreaUniform(int xOffset, int yOffset, double fW, double fH
     return true;
 }
 
+
+double MandelbrotSet::GetImprovedUniformnessOfArea(double fW, double fH, int xOffset, int yOffset, int wDiv, int hDiv)
+{
+    unsigned long long numWhite = 0;
+    unsigned long long numBlack = 0;
+    double totalPixels = fW*fH;
+
+    for(int wStart = 0; wStart < fW; ++wStart)
+    {
+        for(int hStart = 0; hStart < fH; ++hStart)
+        {
+            int xPointIndex = xOffset+wStart;
+            int yPointIndex = yOffset+hStart;
+            if(Paint_GetPixel(xPointIndex , yPointIndex) == WHITE)
+                numWhite++;
+            else
+                numBlack++;
+        }
+    }
+
+    return max((double)numWhite / totalPixels, double(numBlack) / totalPixels);
+}
+
+
 void MandelbrotSet::ZoomOnInterestingArea()
 {   
-    tuple<double, double, unsigned long long> choice;
-    vector<tuple<double, double, unsigned long long>> choices;
+    tuple<double, double, double> choice;
+    vector<tuple<double, double, double>> choices;
 
-    auto uniformness = GetUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, 0, 0, 2, 2);
+    auto uniformness = GetImprovedUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, 0, 0, 2, 2);
     choice = {this->x - this->w/4, this->y + this->h/4, uniformness};
     choices.emplace_back(choice);
 
-    uniformness = GetUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, this->renderedResX / 2, 0, 2, 2);
+    uniformness = GetImprovedUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, this->renderedResX / 2, 0, 2, 2);
     choice = {this->x + this->w/4, this->y + this->h/4, uniformness};
     choices.emplace_back(choice);
 
-    uniformness = GetUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, 0, this->renderedResY / 2, 2, 2);
+    uniformness = GetImprovedUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, 0, this->renderedResY / 2, 2, 2);
     choice = {this->x - this->w/4, this->y - this->h/4, uniformness};
     choices.emplace_back(choice);
 
-    uniformness = GetUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, this->renderedResX / 2, this->renderedResY / 2, 2, 2);
+    uniformness = GetImprovedUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, this->renderedResX / 2, this->renderedResY / 2, 2, 2);
     choice = {this->x + this->w/4, this->y - this->h/4, uniformness};
     choices.emplace_back(choice);     
 
     w = w / 2.0;
     h = h / 2.0;
 
-    choices.erase(std::remove_if(
-        choices.begin(),
-        choices.end(),
-        [](const tuple<double, double, unsigned long long>& x) { 
-            return (std::get<unsigned long long>(x) >= 4); 
-        }), choices.end());
-
     auto lessUniformChoices = choices;
     lessUniformChoices.erase(std::remove_if(
         lessUniformChoices.begin(),
         lessUniformChoices.end(),
-        [](const tuple<double, double, unsigned long long>& x) { 
-            return (std::get<unsigned long long>(x) >= 3); 
+        [](const tuple<double, double, double>& x) { 
+            return (std::get<2>(x) >= 0.85); 
         }), lessUniformChoices.end());
-    
+
+    auto topTierChoices = choices;
+    topTierChoices.erase(std::remove_if(
+        topTierChoices.begin(),
+        topTierChoices.end(),
+        [](const tuple<double, double, double>& x) { 
+            return (std::get<2>(x) >= 0.75); 
+        }), topTierChoices.end());
+
     // Seed
     random_device rd;
     mt19937 g(rd());
 
-    if(lessUniformChoices.size() > 0)
+    if(topTierChoices.size() > 0)
+    {
+            shuffle(topTierChoices.begin(), topTierChoices.end(), g);
+            auto selection = topTierChoices[0];
+            this->x = get<0>(selection);
+            this->y = get<1>(selection);
+    }
+    else if (lessUniformChoices.size() > 0)
     {
             shuffle(lessUniformChoices.begin(), lessUniformChoices.end(), g);
             auto selection = lessUniformChoices[0];
             this->x = get<0>(selection);
             this->y = get<1>(selection);
-    }
+    } 
     else
     {
             shuffle(choices.begin(), choices.end(), g);
