@@ -26,7 +26,7 @@ void MandelbrotSet::SetRender(UBYTE* image)
 void MandelbrotSet::Render(UWORD xResolution, UWORD yResolution)
 {
     // Approximation for number of iterations
-    int iter = (50 + max(0.0, -log10(w)) * 100 );
+    int iter = (50 + max((long double)0.0, -log10(w)) * 100 );
     vector<vector<bool>> columns;
 
     for(int i = yResolution-1; i>=0; --i)
@@ -34,8 +34,8 @@ void MandelbrotSet::Render(UWORD xResolution, UWORD yResolution)
         vector<bool> rows;
         for(int j = 0; j < xResolution; ++j)
         {
-            double p_x = this->x - this->w / 2.0 + (double)j / (double)xResolution * this->w;
-            double p_y = this->y - this->h / 2.0 + (double)(i+1) / (double)yResolution * this->h;
+            long double p_x = this->x - this->w / 2.0 + (long double)j / (long double)xResolution * this->w;
+            long double p_y = this->y - this->h / 2.0 + (long double)(i+1) / (long double)yResolution * this->h;
             rows.emplace_back(IsMandelPoint(p_x, p_y, iter));
         }
         columns.emplace_back(rows);
@@ -63,14 +63,14 @@ void MandelbrotSet::Render(UWORD xResolution, UWORD yResolution)
     }
 }
 
-bool MandelbrotSet::IsMandelPoint(double fX, double fY, int iterations)
+bool MandelbrotSet::IsMandelPoint(long double fX, long double fY, int iterations)
 {
-    double z_x = fX;
-    double z_y = fY;
+    long double z_x = fX;
+    long double z_y = fY;
 
     for(int i = 0; i < iterations; ++i)
     {
-        double z_x_old = z_x;
+        long double z_x_old = z_x;
         z_x = z_x * z_x - z_y * z_y + fX;
         z_y = 2.0 * z_x_old * z_y + fY;
         auto sumSquared = pow(z_x, 2) + pow(z_y, 2);
@@ -81,45 +81,6 @@ bool MandelbrotSet::IsMandelPoint(double fX, double fY, int iterations)
     }
     return false;
 }
-
-unsigned long long MandelbrotSet::GetUniformnessOfArea(double fW, double fH, int xOffset, int yOffset, int wDiv, int hDiv)
-{
-    unsigned long long uniformness = 0;
-    for(int wStart = 0; wStart < wDiv; ++wStart)
-    {
-        for(int hStart = 0; hStart < hDiv; ++hStart)
-        {
-            if(IsAreaUniform(xOffset, yOffset, fW, fH, wDiv, hDiv, wStart, hStart))
-            {
-                ++uniformness;
-            }
-        }
-    }
-
-    return uniformness;
-}
-
-bool MandelbrotSet::IsAreaUniform(int xOffset, int yOffset, double fW, double fH,  int wDiv, int hDiv, double wStart, double hStart)
-{
-    int yInit = yOffset + static_cast<int>(fH / hDiv) * hStart;
-    int xInit = xOffset + static_cast<int>(fW / wDiv) * wStart;
-    auto firstPoint = Paint_GetPixel(xInit , yInit);
-
-    for(unsigned int i = 0; i < static_cast<unsigned int>(fW / wDiv); ++i )
-    {
-        for(unsigned int j = 0; j < static_cast<unsigned int>(fH / hDiv); ++j )
-        {
-            int yTest = yOffset + static_cast<int>(fH / hDiv) * hStart + j;
-            int xTest = xOffset + static_cast<int>(fW / wDiv) * wStart + i;
-            auto testPoint = Paint_GetPixel(xTest , yTest);
-            if(testPoint != firstPoint)
-                return false;
-        }        
-    }
-
-    return true;
-}
-
 
 double MandelbrotSet::GetImprovedUniformnessOfArea(double fW, double fH, int xOffset, int yOffset, int wDiv, int hDiv)
 {
@@ -146,8 +107,8 @@ double MandelbrotSet::GetImprovedUniformnessOfArea(double fW, double fH, int xOf
 
 void MandelbrotSet::ZoomOnInterestingArea()
 {   
-    tuple<double, double, double> choice;
-    vector<tuple<double, double, double>> choices;
+    tuple<long double, long double, long double> choice;
+    vector<tuple<long double, long double, long double>> choices;
 
     auto uniformness = GetImprovedUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, 0, 0, 2, 2);
     choice = {this->x - this->w/4, this->y + this->h/4, uniformness};
@@ -172,7 +133,7 @@ void MandelbrotSet::ZoomOnInterestingArea()
     lessUniformChoices.erase(std::remove_if(
         lessUniformChoices.begin(),
         lessUniformChoices.end(),
-        [](const tuple<double, double, double>& x) { 
+        [](const tuple<long double, long double, long double>& x) { 
             return (std::get<2>(x) >= 0.85); 
         }), lessUniformChoices.end());
 
@@ -180,7 +141,7 @@ void MandelbrotSet::ZoomOnInterestingArea()
     topTierChoices.erase(std::remove_if(
         topTierChoices.begin(),
         topTierChoices.end(),
-        [](const tuple<double, double, double>& x) { 
+        [](const tuple<long double, long double, long double>& x) { 
             return (std::get<2>(x) >= 0.75); 
         }), topTierChoices.end());
 
