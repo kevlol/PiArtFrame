@@ -44,6 +44,8 @@ else ifeq ($(USELIB_JETSONI), USE_HARDWARE_LIB)
 endif
 DEBUG_JETSONI = -D $(USELIB_JETSONI) -D JETSON
 
+LIB_MPFR = -lmpfr -lgmp
+
 .PHONY : RPI JETSON clean
 
 RPI:RPI_DEV RPI_epd 
@@ -56,7 +58,7 @@ CFLAGS += $(MSG) -D $(EPD)
 
 RPI_epd:${OBJ_O}
 	echo $(@)
-	$(CC) $(CFLAGS) -D RPI $(OBJ_O) $(RPI_DEV_C) -I $(DIR_Config) -I $(DIR_GUI) -I $(DIR_EPD) -o $(TARGET) $(LIB_RPI) $(DEBUG)
+	$(CC) $(CFLAGS) -D RPI $(OBJ_O) $(RPI_DEV_C) -I $(DIR_Config) -I $(DIR_GUI) -I $(DIR_EPD) -o $(TARGET) $(LIB_RPI) $(DEBUG) $(LIB_MPFR) 
 	
 JETSON_epd:${OBJ_O}
 	echo $(@)
@@ -80,7 +82,7 @@ ${DIR_BIN}/%.o:$(DIR_Main)/%.c
 	$(CC) $(CFLAGS) -c	$< -o $@ -I $(DIR_Examples) -I $(DIR_Config) -I $(DIR_GUI) -I $(DIR_Main) -I $(DIR_EPD) $(DEBUG)
 
 ${DIR_BIN}/%.o:$(DIR_Main)/%.cpp
-	$(CC) $(CFLAGS) -c	$< -o $@ -I $(DIR_Examples) -I $(DIR_Config) -I $(DIR_GUI) -I $(DIR_Main) -I $(DIR_EPD) $(DEBUG)	
+	$(CC) $(CFLAGS) -c	$< -o $@ -I $(DIR_Examples) -I $(DIR_Config) -I $(DIR_GUI) -I $(DIR_Main) -I $(DIR_EPD) $(DEBUG)
 
 RPI_DEV:
 	$(CC) $(CFLAGS) $(DEBUG_RPI) -c	 $(DIR_Config)/dev_hardware_SPI.c -o $(DIR_BIN)/dev_hardware_SPI.o $(LIB_RPI) $(DEBUG)
