@@ -11,7 +11,7 @@
 using namespace std;
 using namespace chrono;
 
-static constexpr unsigned long SecondsBetweenImages = 25*60; 
+static constexpr unsigned long SecondsBetweenImages = 3*60; 
 void  Handler(int signo)
 {
     //System Exit
@@ -52,6 +52,7 @@ int main(void)
     mandelbrot.SetRender(img);
 
     bool isFirstImage = true;
+    int count = 0;
     while(true)
     {
         steady_clock::time_point beforeRender = steady_clock::now();
@@ -72,6 +73,8 @@ int main(void)
                 afterRender = steady_clock::now();
             }
         }
+        auto renderDuration = duration_cast<std::chrono::seconds>(afterRender - beforeRender).count();
+        cout << "Render time: " << renderDuration << "s" << endl;
         cout << "Drawing image..." << endl;
 
         EPD_7IN5_V2_Init();
@@ -82,7 +85,12 @@ int main(void)
         cout << "Draw completed!" << endl;
 
         mandelbrot.ZoomOnInterestingArea();
-
+        if(count % 50 == 0)
+        {
+            mandelbrot.InitMandelbrotSet();
+        }
+        cout << "Iterations: " << count << endl;
+        count++;
     }
 
     return 0;

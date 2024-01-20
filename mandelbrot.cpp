@@ -5,14 +5,21 @@
 #include <vector>
 #include <tuple>
 #include <random>
+#include <iostream>
 
 using namespace std;
 void MandelbrotSet::InitMandelbrotSet()
 {
-    w = 4;
-    h = 2;
-    x = -1;
-    y = 0;
+    precision = 10;
+    mpfr_init2(w, precision);
+    mpfr_init2(h, precision);
+    mpfr_init2(x, precision);
+    mpfr_init2(y, precision);
+    mpfr_set_d(w, 4.0, MPFR_RNDN);
+    mpfr_set_d(h, 2.0, MPFR_RNDN);
+    mpfr_set_d(x, -1.0, MPFR_RNDN);
+    mpfr_set_d(y, 0.0, MPFR_RNDN);
+    
     rendered = NULL;
     renderedResX = 0;
     renderedResY = 0;
@@ -23,22 +30,99 @@ void MandelbrotSet::SetRender(UBYTE* image)
     rendered = image;
 }
 
+void MandelbrotSet::IncreasePrecision(unsigned long long newPrecision)
+{
+    // Init temporaries with new precision
+    mpfr_t nW, nH, nX, nY;
+    mpfr_init2(nW, newPrecision);
+    mpfr_init2(nH, newPrecision);
+    mpfr_init2(nX, newPrecision);
+    mpfr_init2(nY, newPrecision);
+    mpfr_set(nW, w, MPFR_RNDN);
+    mpfr_set(nH, h, MPFR_RNDN);
+    mpfr_set(nX, x, MPFR_RNDN);
+    mpfr_set(nY, y, MPFR_RNDN);
+
+    // Clear and initialize members
+    mpfr_clear(w);
+    mpfr_clear(h);
+    mpfr_clear(x);
+    mpfr_clear(y);
+    mpfr_init2(w, newPrecision);
+    mpfr_init2(h, newPrecision);
+    mpfr_init2(x, newPrecision);
+    mpfr_init2(y, newPrecision);  
+    mpfr_set(w, nW, MPFR_RNDN);
+    mpfr_set(h, nH, MPFR_RNDN);
+    mpfr_set(x, nX, MPFR_RNDN);
+    mpfr_set(y, nY, MPFR_RNDN);
+
+    precision = newPrecision;
+}
+
 void MandelbrotSet::Render(UWORD xResolution, UWORD yResolution)
 {
+    mpfr_t logW;
+    mpfr_init2(logW, precision);
+    mpfr_log10(logW, w, MPFR_RNDN);
+    mpfr_neg(logW, logW, MPFR_RNDN);
+    double dLogW = mpfr_get_d(logW, MPFR_RNDN);
+
+
     // Approximation for number of iterations
-    int iter = (50 + max(0.0, -log10(w)) * 100 );
+    int iter = (50 + max(0.0, dLogW) * 100 );
+    unsigned long long newPrecision = (8 + max(0.0, dLogW));
+    if(newPrecision > precision)
+        IncreasePrecision(newPrecision);
+
     vector<vector<bool>> columns;
 
+    int ctr = 0;
     for(int i = yResolution-1; i>=0; --i)
     {
         vector<bool> rows;
         for(int j = 0; j < xResolution; ++j)
         {
-            double p_x = this->x - this->w / 2.0 + (double)j / (double)xResolution * this->w;
-            double p_y = this->y - this->h / 2.0 + (double)(i+1) / (double)yResolution * this->h;
+            mpfr_t p_x, p_y, halfW, halfH, two, tmp, tmpX, tmpY;
+
+            mpfr_init2(p_x, precision);
+            mpfr_init2(p_y, precision);
+            mpfr_init2(tmp, precision);
+            mpfr_init2(tmpX, precision);
+            mpfr_init2(tmpY, precision);            
+
+            mpfr_init_set(halfW, w, MPFR_RNDN);
+            mpfr_init_set(halfH, h, MPFR_RNDN);
+            mpfr_init_set_d (two, 2.0, MPFR_RNDN);
+
+            //double p_x = this->x - this->w / 2.0 + (double)j / (double)xResolution * this->w;
+            mpfr_div(halfW, halfW, two, MPFR_RNDN);
+            mpfr_div(halfH, halfH, two, MPFR_RNDN);
+
+            mpfr_set(tmpX, x, MPFR_RNDN);
+            mpfr_sub(tmpX, tmpX, halfW, MPFR_RNDN );
+
+            double jDiv = (double)j / (double)xResolution;
+            mpfr_set_d(tmp, jDiv, MPFR_RNDN);
+            mpfr_mul(tmp, tmp, w, MPFR_RNDN);
+            mpfr_add(p_x, tmpX, tmp, MPFR_RNDN);
+
+
+            //double p_y = this->y - this->h / 2.0 + (double)(i+1) / (double)yResolution * this->h;
+            mpfr_set(tmpY, y, MPFR_RNDN);
+            mpfr_sub(tmpY, tmpY, halfH, MPFR_RNDN );
+
+            double iDiv = (double)(i+1) / (double)yResolution;
+            mpfr_set_d(tmp, iDiv, MPFR_RNDN);
+            mpfr_mul(tmp, tmp, h, MPFR_RNDN);
+            mpfr_add(p_y, tmpY, tmp, MPFR_RNDN);
+
             rows.emplace_back(IsMandelPoint(p_x, p_y, iter));
         }
         columns.emplace_back(rows);
+        //if(ctr %100 == 0)
+            //cout << "Ctr: " << ctr << endl;
+        ctr++;
     }
 
     renderedResX = xResolution;
@@ -63,18 +147,43 @@ void MandelbrotSet::Render(UWORD xResolution, UWORD yResolution)
     }
 }
 
-bool MandelbrotSet::IsMandelPoint(double fX, double fY, int iterations)
-{
-    double z_x = fX;
-    double z_y = fY;
+bool MandelbrotSet::IsMandelPoint(mpfr_t fX, mpfr_t fY, int iterations)
+{   
+    mpfr_t z_x, z_y, z_x2, z_y2, z_x_old, two;
+
+    mpfr_init_set(z_x, fX, MPFR_RNDN);
+    mpfr_init_set(z_y, fY, MPFR_RNDN);
+    mpfr_init2(z_x_old, precision);
+    mpfr_init2(z_x2, precision);
+    mpfr_init2(z_y2, precision);
+    mpfr_init_set_d (two, 2.0, MPFR_RNDN);
 
     for(int i = 0; i < iterations; ++i)
     {
-        double z_x_old = z_x;
-        z_x = z_x * z_x - z_y * z_y + fX;
-        z_y = 2.0 * z_x_old * z_y + fY;
-        auto sumSquared = pow(z_x, 2) + pow(z_y, 2);
-        if (sumSquared > 4)
+        mpfr_set(z_x_old, z_x, MPFR_RNDN);
+        mpfr_mul(z_x2, z_x, z_x, MPFR_RNDN);
+        mpfr_mul(z_y2, z_y, z_y, MPFR_RNDN);
+
+        // z_x = z_x * z_x - z_y * z_y + fX;
+        mpfr_sub(z_x, z_x2, z_y2, MPFR_RNDN);
+        mpfr_add(z_x, z_x, fX, MPFR_RNDN);
+
+        // z_y = 2.0 * z_x_old * z_y + fY;
+        mpfr_mul(z_y, z_y, z_x_old, MPFR_RNDN);
+        mpfr_mul(z_y, two, z_y, MPFR_RNDN);
+        mpfr_add(z_y, z_y, fY, MPFR_RNDN);
+
+        mpfr_t sumSquared, xSumSqr, ySumSqr;
+        mpfr_init2(sumSquared, precision);
+        mpfr_init2(xSumSqr, precision);
+        mpfr_init2(ySumSqr, precision);
+
+        mpfr_mul(xSumSqr, z_x, z_x, MPFR_RNDN);
+        mpfr_mul(ySumSqr, z_y, z_y, MPFR_RNDN);
+
+        mpfr_add(sumSquared, xSumSqr, ySumSqr, MPFR_RNDN);
+
+        if (mpfr_cmp_d(sumSquared, 4.0) > 0)
         {
             return true;
         }
@@ -146,42 +255,73 @@ double MandelbrotSet::GetImprovedUniformnessOfArea(double fW, double fH, int xOf
 
 void MandelbrotSet::ZoomOnInterestingArea()
 {   
-    tuple<double, double, double> choice;
-    vector<tuple<double, double, double>> choices;
+    UniformnessChoice choice;
+    vector<UniformnessChoice> choices;
+
+    mpfr_t four, two, wDiv4, hDiv4, tmpX, tmpY;
+
+    mpfr_init2(choice.m_x, precision);
+    mpfr_init2(choice.m_y, precision);
+    mpfr_init_set_d(four, 4.0, MPFR_RNDN);
+    mpfr_init_set_d(two, 2.0, MPFR_RNDN);
+    mpfr_init_set(wDiv4, w, MPFR_RNDN);
+    mpfr_init_set(hDiv4, h, MPFR_RNDN);
+    mpfr_init2(tmpX, precision);
+    mpfr_init2(tmpY, precision);
+
+    mpfr_div(wDiv4, wDiv4, four, MPFR_RNDN);
+    mpfr_div(hDiv4, hDiv4, four, MPFR_RNDN);
 
     auto uniformness = GetImprovedUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, 0, 0, 2, 2);
-    choice = {this->x - this->w/4, this->y + this->h/4, uniformness};
+
+    mpfr_sub(tmpX, x, wDiv4, MPFR_RNDN);
+    mpfr_add(tmpY, y, hDiv4, MPFR_RNDN);
+    mpfr_set(choice.m_x, tmpX, MPFR_RNDN);
+    mpfr_set(choice.m_y, tmpY, MPFR_RNDN);
+    choice.uniformness = uniformness;
     choices.emplace_back(choice);
 
     uniformness = GetImprovedUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, this->renderedResX / 2, 0, 2, 2);
-    choice = {this->x + this->w/4, this->y + this->h/4, uniformness};
+    mpfr_add(tmpX, x, wDiv4, MPFR_RNDN);
+    mpfr_add(tmpY, y, hDiv4, MPFR_RNDN);
+    mpfr_set(choice.m_x, tmpX, MPFR_RNDN);
+    mpfr_set(choice.m_y, tmpY, MPFR_RNDN);
+    choice.uniformness = uniformness;
     choices.emplace_back(choice);
 
     uniformness = GetImprovedUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, 0, this->renderedResY / 2, 2, 2);
-    choice = {this->x - this->w/4, this->y - this->h/4, uniformness};
+    mpfr_sub(tmpX, x, wDiv4, MPFR_RNDN);
+    mpfr_sub(tmpY, y, hDiv4, MPFR_RNDN);
+    mpfr_set(choice.m_x, tmpX, MPFR_RNDN);
+    mpfr_set(choice.m_y, tmpY, MPFR_RNDN);
+    choice.uniformness = uniformness;
     choices.emplace_back(choice);
 
     uniformness = GetImprovedUniformnessOfArea(this->renderedResX / 2, this->renderedResY / 2, this->renderedResX / 2, this->renderedResY / 2, 2, 2);
-    choice = {this->x + this->w/4, this->y - this->h/4, uniformness};
+    mpfr_add(tmpX, x, wDiv4, MPFR_RNDN);
+    mpfr_sub(tmpY, y, hDiv4, MPFR_RNDN);
+    mpfr_set(choice.m_x, tmpX, MPFR_RNDN);
+    mpfr_set(choice.m_y, tmpY, MPFR_RNDN);
+    choice.uniformness = uniformness;
     choices.emplace_back(choice);     
 
-    w = w / 2.0;
-    h = h / 2.0;
+    mpfr_div(w, w, two, MPFR_RNDN);
+    mpfr_div(h, h, two, MPFR_RNDN);
 
     auto lessUniformChoices = choices;
     lessUniformChoices.erase(std::remove_if(
         lessUniformChoices.begin(),
         lessUniformChoices.end(),
-        [](const tuple<double, double, double>& x) { 
-            return (std::get<2>(x) >= 0.85); 
+        [](const UniformnessChoice& x) { 
+            return (x.uniformness >= 0.85); 
         }), lessUniformChoices.end());
 
     auto topTierChoices = choices;
     topTierChoices.erase(std::remove_if(
         topTierChoices.begin(),
         topTierChoices.end(),
-        [](const tuple<double, double, double>& x) { 
-            return (std::get<2>(x) >= 0.75); 
+        [](const UniformnessChoice& x) { 
+            return (x.uniformness >= 0.75); 
         }), topTierChoices.end());
 
     // Seed
@@ -192,22 +332,22 @@ void MandelbrotSet::ZoomOnInterestingArea()
     {
             shuffle(topTierChoices.begin(), topTierChoices.end(), g);
             auto selection = topTierChoices[0];
-            this->x = get<0>(selection);
-            this->y = get<1>(selection);
+            mpfr_set(x, selection.m_x, MPFR_RNDN);
+            mpfr_set(y, selection.m_y, MPFR_RNDN);
     }
     else if (lessUniformChoices.size() > 0)
     {
             shuffle(lessUniformChoices.begin(), lessUniformChoices.end(), g);
             auto selection = lessUniformChoices[0];
-            this->x = get<0>(selection);
-            this->y = get<1>(selection);
+            mpfr_set(x, selection.m_x, MPFR_RNDN);
+            mpfr_set(y, selection.m_y, MPFR_RNDN);
     } 
     else
     {
             shuffle(choices.begin(), choices.end(), g);
             auto selection = choices[0];
-            this->x = get<0>(selection);
-            this->y = get<1>(selection);
+            mpfr_set(x, selection.m_x, MPFR_RNDN);
+            mpfr_set(y, selection.m_y, MPFR_RNDN);
     }
 }
 
