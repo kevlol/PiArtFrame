@@ -52,6 +52,7 @@ int main(void)
     mandelbrot.SetRender(img);
 
     bool isFirstImage = true;
+    unsigned int numberOfZooms = 1;
     while(true)
     {
         steady_clock::time_point beforeRender = steady_clock::now();
@@ -82,6 +83,12 @@ int main(void)
         cout << "Draw completed!" << endl;
 
         mandelbrot.ZoomOnInterestingArea();
+
+        if(numberOfZooms %50 == 0)
+        {
+            mandelbrot.InitMandelbrotSet();
+        }
+        numberOfZooms++;
 
     }
 
